@@ -326,6 +326,15 @@ class LogBot(irc.IRCClient):
         return True
 
 
+    def moedict(self, cmd, user, channel, msg):
+        from apis.moedict import quote
+        if cmd != u'moe':
+            return False
+        parts = msg.split()
+        self.msg(channel, quote(parts[2]))
+        return True
+
+
     def song(self, cmd, user, channel, msg):
         from apis.lastfm import getCurrentSong
         if cmd != u'song':
@@ -339,15 +348,8 @@ class LogBot(irc.IRCClient):
 
 
     def funslots(self, cmd, user, channel, msg):
-        from random import randint
-        if cmd != u'funslots' and cmd != u'繽紛樂':
-            return False
-        c1 = ['講個古', '表面上成局的牌', '講個秘訣']
-        c2 = ['我很有職業道德', '軌跡有高度的依賴性', '隨手打打']
-        c3 = ['多說一點，應該無妨', '打聯盟和組織戰', '我稍後會作個分析釋出']
-        def pick(xs):
-            return xs[randint(0, len(xs) - 1)]
-        fun = '，'.join([pick(c1), pick(c2), pick(c3)])
+        from apis.funslots import funslots
+        fun = funslots()
         self.msg(channel, fun)
         return True
 
@@ -448,6 +450,7 @@ class LogBot(irc.IRCClient):
                 #self.tell,
                 #self.movie,
                 self.reddit,
+                self.moedict,
                 #self.define,
                 self.top10,
                 self.song,
