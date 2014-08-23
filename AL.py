@@ -13,14 +13,14 @@ from twisted.python import log
 # system imports
 import time
 import sys
-from scrapers.cafescraper import scrapeCafe
+#from scrapers.cafescraper import scrapeCafe
 from apis.weatherman import currentWeather
 from apis.wolfram import wolfram
-from apis.urbandic import urbanDict
-from apis.lastfm import getCurrentSong
-from apis.rottentomatoes import rottentomatoes
+#from apis.urbandic import urbanDict
+#from apis.lastfm import getCurrentSong
+#from apis.rottentomatoes import rottentomatoes
 from apis.reddit import getSubReddit, getQuote
-from random import randint
+#from random import randint
 import ConfigParser
 import json
 import traceback
@@ -175,34 +175,29 @@ class LogBot(irc.IRCClient):
                 """Tell them the commands I have available"""
                 try:
                     help_msg = 'I currently support the following commands:\
-                    \ncafe\
                     \nquote\
                     \nweather [<city> <state> | <zip>]\
-                    \ntell <user> <message> (When they join the channel)\
                     \ndefine <something>\
                     \nshow users\
-                    \nremember <name> <email> <phone number> (email, phone optional)\
-                    \nupdate <user> <new email>\
-                    \nsong <lastfm user>\
-                    \nmovie <movie name>\
+                    \nremember <name>\
                     \nreddit <subreddit> <# of article optional>\
-                    \nor just ask me a question'
+                    \nor just ask me a question, I will ask Wolfram'
                     self.msg(user, help_msg)
                 except Exception as e:
                     self.logError(channel)
 
 
-            elif parts[1] == 'cafe':
-                try:
-                    menu = scrapeCafe()
-                    # make the menu all nice for chat purposes
-                    for k, v in menu['stations'].items():
-                        if v:
-                            station = '{:.<{station_width}}'.format(k.encode('utf-8'), station_width=menu['station_max_width'] + 4)
-                            item = '{:.>{item_width}}'.format(v['item'].encode('utf-8'), item_width=menu['item_max_width'])
-                            self.msg(channel, '%s%s   %s' % (station, item, v['price'].encode('utf-8')))
-                except Exception as e:
-                    self.logError(channel)
+#            elif parts[1] == 'cafe':
+#                try:
+#                    menu = scrapeCafe()
+#                    # make the menu all nice for chat purposes
+#                    for k, v in menu['stations'].items():
+#                        if v:
+#                            station = '{:.<{station_width}}'.format(k.encode('utf-8'), station_width=menu['station_max_width'] + 4)
+#                            item = '{:.>{item_width}}'.format(v['item'].encode('utf-8'), item_width=menu['item_max_width'])
+#                            self.msg(channel, '%s%s   %s' % (station, item, v['price'].encode('utf-8')))
+#                except Exception as e:
+#                    self.logError(channel)
 
 
             elif parts[1] == 'hi':
@@ -254,24 +249,24 @@ class LogBot(irc.IRCClient):
                     self.logError(channel)
 
 
-            elif parts[1] == 'movie':
-                try:
-                    config = ConfigParser.RawConfigParser()
-                    config.read('config.cfg')
-                    key = config.get('rottentomatoes', 'key')
-                    movie = ' '.join(parts[2:])
-                    movie_response = rottentomatoes(movie, key)
-                    if movie_response:
-                        answer = 'Critics Score: {0}\nAudience Score: {1}\n{2}'.format(
-                            movie_response['critics_score'],
-                            movie_response['audience_score'],
-                            movie_response['link'])
-                        self.msg(channel, answer)
-                    else:
-                        answer = 'I can\'t find that movie'
-                        self.msg(channel, answer)
-                except Exception, e:
-                    self.logError(channel)
+#            elif parts[1] == 'movie':
+#                try:
+#                    config = ConfigParser.RawConfigParser()
+#                    config.read('config.cfg')
+#                    key = config.get('rottentomatoes', 'key')
+#                    movie = ' '.join(parts[2:])
+#                    movie_response = rottentomatoes(movie, key)
+#                    if movie_response:
+#                        answer = 'Critics Score: {0}\nAudience Score: {1}\n{2}'.format(
+#                            movie_response['critics_score'],
+#                            movie_response['audience_score'],
+#                            movie_response['link'])
+#                        self.msg(channel, answer)
+#                    else:
+#                        answer = 'I can\'t find that movie'
+#                        self.msg(channel, answer)
+#                except Exception, e:
+#                    self.logError(channel)
 
             elif parts[1] == 'reddit':
                 try:
@@ -323,19 +318,8 @@ class LogBot(irc.IRCClient):
                     user = parts[2]
                     if user not in self.user_info:
                         self.user_info[user] = {
-                            'email': '',
-                            'phone': '',
                             'points': 0
                         }
-                        # Try to set an email or phone, if they were supplied
-                        try:
-                            self.user_info[user]['email'] = parts[3]
-                            try:
-                                self.user_info[user]['phone'] = parts[4]
-                            except IndexError:
-                                pass
-                        except IndexError:
-                            pass
                         self.saveUserInfo()
                         self.msg(channel, "I'll remember that info")
                     else:
@@ -344,44 +328,44 @@ class LogBot(irc.IRCClient):
                     self.logError(channel)
 
 
-            elif ' '.join(parts[1:3]) == 'update email':
-                try:
-                    user = parts[3]
-                    if user in self.user_info:
-                        try:
-                            self.user_info[user]['email'] = parts[4]
-                            self.saveUserInfo()
-                            self.msg(channel, 'Updated email for %s' % user)
-                        except IndexError:
-                            self.msg(channel, 'Please supply an email')
-                    else:
-                        self.msg(channel, "I don't know that user")
-                except Exception as e:
-                    self.logError(channel)
+#            elif ' '.join(parts[1:3]) == 'update email':
+#                try:
+#                    user = parts[3]
+#                    if user in self.user_info:
+#                        try:
+#                            self.user_info[user]['email'] = parts[4]
+#                            self.saveUserInfo()
+#                            self.msg(channel, 'Updated email for %s' % user)
+#                        except IndexError:
+#                            self.msg(channel, 'Please supply an email')
+#                    else:
+#                        self.msg(channel, "I don't know that user")
+#                except Exception as e:
+#                    self.logError(channel)
 
 
-            elif parts[1] == 'song':
-                try:
-                    user = parts[2]
-                    song = getCurrentSong(user)
-                    if song:
-                        self.msg(channel, '{0} is listening to {1}'.format(user, song.encode('utf-8')))
-                except Exception as e:
-                    self.logError(channel)
+#            elif parts[1] == 'song':
+#                try:
+#                    user = parts[2]
+#                    song = getCurrentSong(user)
+#                    if song:
+#                        self.msg(channel, '{0} is listening to {1}'.format(user, song.encode('utf-8')))
+#                except Exception as e:
+#                    self.logError(channel)
 
-            elif parts[1] in ['Will', 'will']:
-                try:
-                    possible_ansers = [
-                        'Yes.',
-                        'No.',
-                        'Probably.',
-                        'There is a 50/50 chance.',
-                        'Maybe. Impossible to know for sure',
-                        'Probably not.'
-                    ]
-                    self.msg(channel, possible_ansers[randint(0, 5)].encode('utf-8'))
-                except:
-                    self.logError(channel)
+#            elif parts[1] in ['Will', 'will']:
+#                try:
+#                    possible_ansers = [
+#                        'Yes.',
+#                        'No.',
+#                        'Probably.',
+#                        'There is a 50/50 chance.',
+#                        'Maybe. Impossible to know for sure',
+#                        'Probably not.'
+#                    ]
+#                    self.msg(channel, possible_ansers[randint(0, 5)].encode('utf-8'))
+#                except:
+#                    self.logError(channel)
 
 
         #==========================================================================================
