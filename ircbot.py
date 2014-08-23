@@ -17,6 +17,7 @@ import sys
 import ConfigParser
 import json
 import traceback
+import re
 
 
 MESSAGES_JSON = 'files/messages.json'
@@ -150,9 +151,18 @@ class LogBot(irc.IRCClient):
 
 
     def nobody_tw(self, user, channel, msg):
-        if msg.find(u'沒有人') == -1:
+        nb = re.compile(u'承認.+沒有人')
+        if nb.search(msg):
+            try:
+                user = msg.split(':')[0]
+            except IndexError:
+                return True
+        elif msg.find(u'沒有人') == -1:
             return False
-        self.msg(channel, '%s: 先承認你就是沒有人' % (user,))
+        if user == self.nickname:
+            self.msg(channel, '你才是沒有人!')
+        else:
+            self.msg(channel, '%s: 先承認你就是沒有人' % (user.encode('utf-8'),))
         return True
 
 
