@@ -3,6 +3,7 @@ server=irc.freenode.net
 port=6667
 channel=test_ircbot
 logfile=log/irc.log
+nickname=AL
 
 [wolfram]
 key=MY-WOLFRAM-KEY

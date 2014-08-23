@@ -26,6 +26,9 @@ import json
 import traceback
 
 
+MESSAGES_JSON = 'files/messages.json'
+USERINFO_JSON = 'files/user_info.json'
+
 
 class MessageLogger:
     """
@@ -57,39 +60,35 @@ class LogBot(irc.IRCClient):
     user_info = {}
 
 
-    def __init__(self):
+    def __init__(self, nickname):
         self.stored_messages = self.getMessages()
         self.user_info = self.getUserInfo()
+        self.nickname = nickname
 
     
     def getMessages(self):
         """ Get my persisted messages from the message.json file"""
-        with open('files/messages.json', 'r') as f:
+        with open(MESSAGES_JSON, 'r') as f:
             try:
                 messages = json.loads(f.read())
-                f.close()
                 return messages
             except:
-                f.close()
                 return {}
 
 
     def saveMessages(self):
         """ Presist my stored messages by writing to a file"""
-        with open('files/messages.json', 'w') as f:
+        with open(MESSAGES_JSON, 'w') as f:
             f.write(json.dumps(self.stored_messages))
-            f.close()
 
 
     def getUserInfo(self):
         """ Get information about my users """
-        with open('files/user_info.json', 'r') as f:
+        with open(USERINFO_JSON, 'r') as f:
             try:
                 messages = json.loads(f.read())
-                f.close()
                 return messages
             except:
-                f.close()
                 return {}
 
 
@@ -102,9 +101,8 @@ class LogBot(irc.IRCClient):
 
     def saveUserInfo(self):
         """ Save my user data """
-        with open('files/user_info.json', 'w') as f:
+        with open(USERINFO_JSON, 'w') as f:
             f.write(json.dumps(self.user_info))
-            f.close()
 
 
     def connectionMade(self):
@@ -152,8 +150,6 @@ class LogBot(irc.IRCClient):
             # create a new user if AL doesn't know who they are
             if awardee not in self.user_info:
                 self.user_info[awardee] = {
-                    'email': '',
-                    'phone': '',
                     'points': 0
                 }
 
@@ -201,7 +197,7 @@ class LogBot(irc.IRCClient):
 
 
             elif parts[1] == 'hi':
-                    self.msg(channel, 'Hello, I am AL')
+                    self.msg(channel, 'Hello, I am ' + self.nickname)
 
             elif parts[1] == 'quote':
                 try:
@@ -449,13 +445,13 @@ class LogBotFactory(protocol.ClientFactory):
     A new protocol instance will be created each time we connect to the server.
     """
 
-    def __init__(self, channel, filename):
-        self.channel = channel
-        self.filename = filename
-
+    def __init__(self, conf):
+        self.channel = conf['channel']
+        self.filename = conf['logfile']
+        self.nickname = conf['nickname']
 
     def buildProtocol(self, addr):
-        p = LogBot()
+        p = LogBot(self.nickname)
         p.factory = self
         return p
 
@@ -475,16 +471,17 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
     config = ConfigParser.RawConfigParser()
     config.read('config.cfg')
-    server  = config.get('irc', 'server')
-    port    = int(config.get('irc', 'port'))
-    channel = config.get('irc', 'channel')
-    logfile = config.get('irc', 'logfile')
+    c = {'server': '', 'port': 0, 'channel': '', 'logfile': '', 'nickname': ''}
+    for k,v in c.items():
+        c[k] = config.get('irc', k)
+        if type(v) == type(0):
+            c[k] = int(c[k])
     
     # create factory protocol and application
-    f = LogBotFactory(channel, logfile)
+    f = LogBotFactory(c)
 
     # connect factory to this host and port
-    reactor.connectTCP(server, port, f)
+    reactor.connectTCP(c['server'], c['port'], f)
 
     # run bot
     reactor.run()
