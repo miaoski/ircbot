@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 """
 ircbot derived from https://github.com/sambev/ircbot
 
@@ -87,10 +88,12 @@ class LogBot(irc.IRCClient):
         """ Get information about my users """
         with open(USERINFO_JSON, 'r') as f:
             try:
-                messages = json.loads(f.read())
-                return messages
+                userinfo = json.loads(f.read())
+                if self.nickname not in userinfo:
+                    userinfo[self.nickname] = {'points': 0}
+                return userinfo
             except:
-                return {}
+                return {self.nickname: {'points': 0}}
 
 
     def logError(self, channel):
@@ -134,33 +137,9 @@ class LogBot(irc.IRCClient):
         except Exception as e:
             self.logError(channel)
 
-    # callbacks for events
-
-    def signedOn(self):
-        """Called when bot has succesfully signed on to server."""
-        self.join(self.factory.channel)
-
-
-    def joined(self, channel):
-        """This will get called when the bot joins the channel."""
-        self.logger.log("[I have joined %s]" % channel)
-
-
-    def privmsg(self, user, channel, msg):
-        """This will get called when the bot receives a message."""
-        print "DEBUG:", user
-        print "DEBUG:", channel
-        print "DEBUG:", msg
-        user = user.split('!', 1)[0]
-        self.logger.log("<%s> %s" % (user, msg))
-        parts = msg.split()
-        
-        # Check to see if they're sending me a private message
-        if channel == self.nickname:
-            parts.insert(0, self.nickname+':')
-            channel = user
-
-        # if someone is trying to give points
+    def award(self, user, channel, msg):
+        if msg.find('++') == -1:
+            return False
         if parts[0][-2:] == '++':
             awardee = parts[0][:-2]
 
@@ -177,27 +156,83 @@ class LogBot(irc.IRCClient):
                 self.msg(channel, '{0} has {1} point'. format(awardee, total_points))
             else:
                 self.msg(channel, '{0} has {1} points'. format(awardee, total_points))
+        return True
 
 
-        #==========================================================================================
-        # ---------- MESSAGES DIRECTED AT ME
-        #==========================================================================================
+    def nobody_tw(self, user, channel, msg):
+        if msg.find(u'沒有人') == -1:
+            return False
+        self.msg(channel, '%s: 先承認你就是沒有人' % (user,))
+        return True
+
+
+    def nobody_en(self, user, channel, msg):
+        if msg.lower().find(u'nobody') == -1:
+            return False
+        self.msg(channel, '%s is nobody!' % (user,))
+        return True
+
+
+    def helpmsg(self):
+        try:
+            help_msg = '請使用以下指令:\
+            \nquote          - 從 Reddit 隨機引用一句話\
+            \nweather <城市> - 本日天氣\
+            \nmoe <詞>       - 查詢萌典\
+            \nbillboard      - 排行榜\
+            \nreddit <subreddit> [# of article]\
+            \n或是隨便打，我會去問 Wolfram'
+            self.msg(user, help_msg)
+        except Exception as e:
+            self.logError(channel)
+
+    # callbacks for events
+
+    def signedOn(self):
+        """Called when bot has succesfully signed on to server."""
+        self.join(self.factory.channel)
+
+
+    def joined(self, channel):
+        """This will get called when the bot joins the channel."""
+        self.logger.log("[I have joined %s]" % channel)
+
+
+    def privmsg(self, user, channel, msg):
+        """This will get called when the bot receives a message."""
+        user = user.split('!', 1)[0]
+        self.logger.log("<%s> %s" % (user, msg))
+        msg = msg.decode('UTF-8', 'ignore')
+        parts = msg.split()
+        
+        # Check to see if they're sending me a private message
+        if channel == self.nickname:
+            parts.insert(0, self.nickname+':')
+            channel = user
+
+        #=======================================
+        # MESSAGES NOT DIRECTED AT ME
+        #=======================================
+
+        indirect_functions = [
+                self.award,
+                self.nobody_tw,
+                self.nobody_en,
+                ]
+        for f in indirect_functions:
+            if f(user, channel, msg):
+                return
+
+
+        #===================================
+        # MESSAGES DIRECTED AT ME
+        #===================================
         if parts[0] != self.nickname + ':':
             return
 
         if parts[1] == 'help':
-            """Tell them the commands I have available"""
-            try:
-                help_msg = 'I currently support the following commands:\
-                \nquote\
-                \nweather [<city> <state> | <zip>]\
-                \ndefine <something>\
-                \nshow users\
-                \nreddit <subreddit> <# of article optional>\
-                \nor just ask me a question, I will ask Wolfram'
-                self.msg(user, help_msg)
-            except Exception as e:
-                self.logError(channel)
+            self.helpmsg()
+            return
 
 
 #        elif parts[1] == 'cafe':
