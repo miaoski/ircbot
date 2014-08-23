@@ -492,7 +492,7 @@ if __name__ == '__main__':
     config = ConfigParser.RawConfigParser()
     config.read('config.cfg')
     server  = config.get('irc', 'server')
-    port    = config.get('irc', 'port')
+    port    = int(config.get('irc', 'port'))
     channel = config.get('irc', 'channel')
     logfile = config.get('irc', 'logfile')
     
