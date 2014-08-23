@@ -129,24 +129,17 @@ class LogBot(irc.IRCClient):
             self.logError(channel)
 
     def award(self, user, channel, msg):
+        "Input: ipa++ 或 ipa ++ 或 ipa: ++ 或 ipa:++"
         if msg.find('++') == -1:
             return False
-        if parts[0][-2:] == '++':
-            awardee = parts[0][:-2]
-
-            # create a new user if AL doesn't know who they are
+        aw = re.compile(r'([^ :+]+)[ :]*[+][+]')
+        for awardee in aw.findall(msg):
             if awardee not in self.user_info:
-                self.user_info[awardee] = {
-                    'points': 0
-                }
-
+                self.user_info[awardee] = { 'points': 0 }
             self.user_info[awardee]['points'] += 1
-            total_points = self.user_info[awardee]['points']
             self.saveUserInfo()
-            if total_points == 1:
-                self.msg(channel, '{0} has {1} point'. format(awardee, total_points))
-            else:
-                self.msg(channel, '{0} has {1} points'. format(awardee, total_points))
+            sc = self.user_info[awardee]['points']
+            self.logger.log('{0} has {1} point(s)'. format(awardee, sc))
         return True
 
 
@@ -179,11 +172,12 @@ class LogBot(irc.IRCClient):
         help_msg = '請使用以下指令:\
         \nquote          - 從 Reddit 隨機引用一句話\
         \nfunslots       - 網友 x 的繽紛樂\
+        \n繽紛樂         - 網友 x 的繽紛樂\
         \nweather <城市> - 本日天氣\
         \nmoe <詞>       - 查詢萌典\
         \ntop10          - 排行榜\
         \nreddit <subreddit> [# of article]\
-        \n或是隨便打，我會去問 Wolfram'
+        \n或是隨便打，我不一定會去問 Wolfram'
         self.msg(user, help_msg)
         return True
 
@@ -328,7 +322,7 @@ class LogBot(irc.IRCClient):
         if cmd != u'top10':
             return False
         tops = sorted(self.user_info.iteritems(), key=itemgetter(1), reverse = True)
-        self.msg(user, ', '.join(['%s: %d' % (v[0], v[1]['points']) for v in tops[0:10]]).encode('utf-8'))
+        self.msg(channel, ', '.join(['%s: %d' % (v[0], v[1]['points']) for v in tops[0:10]]).encode('utf-8'))
         return True
 
 
