@@ -166,22 +166,6 @@ class LogBot(irc.IRCClient):
         return True
 
 
-    def helpmsg(self, cmd, user, channel, msg):
-        if cmd != 'help':
-            return False
-        help_msg = '請使用以下指令:\
-        \nquote          - 從 Reddit 隨機引用一句話\
-        \nfunslots       - 網友 x 的繽紛樂\
-        \n繽紛樂         - 網友 x 的繽紛樂\
-        \nweather <城市> - 本日天氣\
-        \nmoe <詞>       - 查詢萌典\
-        \ntop10          - 排行榜\
-        \nreddit <subreddit> [# of article]\
-        \n或是隨便打，我不一定會去問 Wolfram'
-        self.msg(user, help_msg)
-        return True
-
-
     def cafe(self, cmd, user, channel, msg):
         from scrapers.cafescraper import scrapeCafe
         if cmd != 'cafe':
@@ -204,6 +188,7 @@ class LogBot(irc.IRCClient):
 
 
     def quote(self, cmd, user, channel, msg):
+        "quote - 從 Reddit 隨機引用一句話"
         from apis.reddit import getQuote
         if cmd != u'quote':
             return False
@@ -276,6 +261,7 @@ class LogBot(irc.IRCClient):
 
 
     def reddit(self, cmd, user, channel, msg):
+        "reddit <subreddit> [# of article] - 查詢 reddit"
         from apis.reddit import getSubReddit
         if cmd != u'reddit':
             return False
@@ -318,6 +304,7 @@ class LogBot(irc.IRCClient):
 
 
     def top10(self, cmd, user, channel, msg):
+        "top10 - 按讚排行榜"
         from operator import itemgetter
         if cmd != u'top10':
             return False
@@ -327,6 +314,7 @@ class LogBot(irc.IRCClient):
 
 
     def moedict(self, cmd, user, channel, msg):
+        "moe <詞> - 查詢萌典"
         from apis.moedict import quote
         if cmd != u'moe':
             return False
@@ -348,7 +336,10 @@ class LogBot(irc.IRCClient):
 
 
     def funslots(self, cmd, user, channel, msg):
+        "funslots - 網友 x 的繽紛樂"
         from apis.funslots import funslots
+        if cmd != u'funslots':
+            return False
         fun = funslots()
         self.msg(channel, fun)
         return True
@@ -387,6 +378,8 @@ class LogBot(irc.IRCClient):
 
 
     def unknown_command(self, cmd, user, channel, msg):
+        if cmd == 'help':
+            return False
         self.msg(channel, 'Affedersiniz.  "%s"\'den anlamadım.' % (cmd.encode('utf-8'),))
         # self.wolfram(user, channel, msg)
         return True
@@ -439,30 +432,39 @@ class LogBot(irc.IRCClient):
 
         if parts[0] != self.nickname + ':':
             return
+        cmd = parts[1].lower()
 
         direct_functions = [
-                self.helpmsg,
                 #self.cafe,
                 self.hi,
                 self.funslots,
                 self.quote,
-                self.weather,
+                #self.weather,
                 #self.tell,
                 #self.movie,
                 self.reddit,
                 self.moedict,
                 #self.define,
                 self.top10,
-                self.song,
+                #self.song,
                 self.unknown_command,       # Keep this the last func
                 ]
         for f in direct_functions:
             try:
-                cmd = parts[1].lower()
                 if f(cmd, user, channel, msg): return
             except Exception as e:
                 self.logError(channel)
                 return
+
+        if cmd == 'help':
+            help_msg  = '請使用以下指令:\n'
+            for f in direct_functions:
+                if f.__doc__ is not None:
+                    help_msg += f.__doc__ + '\n'
+            help_msg += '或是隨便打，我不一定會去問 Wolfram'
+            self.msg(user, help_msg)
+
+
 
 
     def userJoined(self, user, channel):
