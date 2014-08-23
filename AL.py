@@ -1,23 +1,7 @@
 """
-Al - for Alan Turing
+ircbot derived from https://github.com/sambev/ircbot
 
-If someone says the bot's name in the channel followed by a ':',
-e.g.
-
-    <sam> al: hello!
-
-the al will reply:
-
-    <logbot> sam: I am AL
-
-Run this script with four arguments:
-e.g.
-    <server/ip>:    'irc.freenode.net'
-    <port>:         6667
-    <channel>:      main
-    <logfile>:      log/channel.log
-
-    $ python AL.py irc.freenode.net 6667 main log/channel.log
+Edit config.cfg
 """
 
 
@@ -424,9 +408,9 @@ class LogBot(irc.IRCClient):
                             count = 0
                             self.msg(channel, 'Not entirely sure, maybe this helps?:')
                             for k, v in result.items():
-                                if count < 2:
+                                if count < 2 and v is not None:
                                     self.msg(channel, v.encode('utf-8'))
-                                else:
+                                elif v is not None:
                                     self.msg(user, v.encode('utf-8'))
                                 count += 1
                     else:
@@ -505,12 +489,18 @@ class LogBotFactory(protocol.ClientFactory):
 if __name__ == '__main__':
     # initialize logging
     log.startLogging(sys.stdout)
+    config = ConfigParser.RawConfigParser()
+    config.read('config.cfg')
+    server  = config.get('irc', 'server')
+    port    = config.get('irc', 'port')
+    channel = config.get('irc', 'channel')
+    logfile = config.get('irc', 'logfile')
     
     # create factory protocol and application
-    f = LogBotFactory(sys.argv[3], sys.argv[4])
+    f = LogBotFactory(channel, logfile)
 
     # connect factory to this host and port
-    reactor.connectTCP(sys.argv[1], int(sys.argv[2]), f)
+    reactor.connectTCP(server, port, f)
 
     # run bot
     reactor.run()
