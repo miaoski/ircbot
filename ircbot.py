@@ -14,14 +14,6 @@ from twisted.python import log
 # system imports
 import time
 import sys
-#from scrapers.cafescraper import scrapeCafe
-from apis.weatherman import currentWeather
-from apis.wolfram import wolfram
-#from apis.urbandic import urbanDict
-#from apis.lastfm import getCurrentSong
-#from apis.rottentomatoes import rottentomatoes
-from apis.reddit import getSubReddit, getQuote
-#from random import randint
 import ConfigParser
 import json
 import traceback
@@ -173,18 +165,212 @@ class LogBot(irc.IRCClient):
         return True
 
 
-    def helpmsg(self):
+    def helpmsg(self, cmd, user, channel, msg):
+        if cmd != 'help':
+            return False
+        help_msg = '請使用以下指令:\
+        \nquote          - 從 Reddit 隨機引用一句話\
+        \nweather <城市> - 本日天氣\
+        \nmoe <詞>       - 查詢萌典\
+        \nbillboard      - 排行榜\
+        \nreddit <subreddit> [# of article]\
+        \n或是隨便打，我會去問 Wolfram'
+        self.msg(user, help_msg)
+        return True
+
+
+    def cafe(self, cmd, user, channel, msg):
+        from scrapers.cafescraper import scrapeCafe
+        if cmd != 'cafe':
+            return False
+        menu = scrapeCafe()
+        # make the menu all nice for chat purposes
+        for k, v in menu['stations'].items():
+            if v:
+                station = '{:.<{station_width}}'.format(k.encode('utf-8'), station_width=menu['station_max_width'] + 4)
+                item = '{:.>{item_width}}'.format(v['item'].encode('utf-8'), item_width=menu['item_max_width'])
+                self.msg(channel, '%s%s   %s' % (station, item, v['price'].encode('utf-8')))
+        return True
+
+
+    def hi(self, cmd, user, channel, msg):
+        if cmd not in [u'hi', u'salam', u'selam', u'哈囉', u'你好', u'merhaba']:
+            return False
+        self.msg(channel, 'Hi! 我是 ' + self.nickname)
+        return True
+
+
+    def quote(self, cmd, user, channel, msg):
+        from apis.reddit import getQuote
+        if cmd != 'quote':
+            return False
+        randomQuote = getQuote()
+        if randomQuote is not None:
+            self.msg(channel, randomQuote.encode('utf-8'))
+        else:
+            self.msg(channel, 'Sorry.  I failed to get a quote.')
+        return True
+
+
+    def weather(self, cmd, user, channel, msg):
+        from apis.weatherman import currentWeather
+        if cmd != 'weather':
+            return False
+        parts = msg.split()
+        if len(parts) == 3 and  parts[2].isdigit() and len(parts[2]) == 5:
+            weather = currentWeather('', '', parts[2])
+        elif len(parts) >= 4:
+            state = parts.pop()
+            city = ' '.join(parts[2:])
+            weather = currentWeather(city, state)
+        else:
+            weather = currentWeather()
+            w_msg = 'The weather in {0} is {1}, {2} degrees, {3}% humdity.'.format(
+                    weather['place'],
+                    weather['status'],
+                    weather['temp'],
+                    weather['humidity']
+                    )
+            self.msg(channel, w_msg)
+            self.logger.log(w_msg)
+        return True
+
+
+    def tell(self, cmd, user, channel, msg):
+        if cmd != 'tell':
+            return False
+        parts = msg.split()
+        target_user = parts[2]
+        tell_msg = '{0}, {1} said: {2}'.format(target_user, user, ' '.join(parts[3:]))
+        if target_user not in self.stored_messages:
+            self.stored_messages[target_user] = []
+        self.stored_messages[target_user].append(tell_msg)
+        self.saveMessages()
+        self.msg(channel, 'I will pass that along when {0} joins'.format(target_user))
+        return True
+
+
+    def movie(self, cmd, user, channel, msg):
+        from apis.rottentomatoes import rottentomatoes
+        if cmd != 'movie':
+            return False
+        key = self.factory.rottentomatoes
+        if key is None:
+            self.logger.log('Please set rottentomatoes key')
+            return False
+        movie = ' '.join(parts[2:])
+        movie_response = rottentomatoes(movie, key)
+        if movie_response:
+            answer = 'Critics Score: {0}\nAudience Score: {1}\n{2}'.format(
+                    movie_response['critics_score'],
+                    movie_response['audience_score'],
+                    movie_response['link'])
+            self.msg(channel, answer)
+        else:
+            answer = 'I can\'t find that movie'
+            self.msg(channel, answer)
+        return True
+
+
+    def reddit(self, cmd, user, channel, msg):
+        from apis.reddit import getSubReddit
+        if cmd != 'reddit':
+            return False
+        parts = msg.split()
+        subreddit = parts[2]
         try:
-            help_msg = '請使用以下指令:\
-            \nquote          - 從 Reddit 隨機引用一句話\
-            \nweather <城市> - 本日天氣\
-            \nmoe <詞>       - 查詢萌典\
-            \nbillboard      - 排行榜\
-            \nreddit <subreddit> [# of article]\
-            \n或是隨便打，我會去問 Wolfram'
-            self.msg(user, help_msg)
-        except Exception as e:
-            self.logError(channel)
+            count = int(parts[3])
+        except IndexError:
+            count = 1
+
+        reddit_response = getSubReddit(subreddit, count)
+        if reddit_response:
+            answer = '{0}: {1} : {2}'.format(
+                    count,
+                    reddit_response['title'],
+                    reddit_response['url'])
+            self.msg(channel, answer.encode('utf-8'))
+        else:
+            answer = 'I can\'t find that on reddit'
+            self.msg(channel, answer)
+        return True
+
+
+    def define(self, cmd, user, channel, msg):
+        from apis.urbandic import urbanDict
+        if cmd != 'define':
+            return False
+        question = ' '.join(parts[2:])
+        urban_response = urbanDict(question)
+        if urban_response:
+            answer = '{0}\nFor Example: {1}\n{2}'.format(
+                    urban_response['definition'], 
+                    urban_response['example'], 
+                    urban_response['permalink']) 
+            self.msg(channel, answer)
+        else:
+            answer = 'I don\'t know'
+            self.msg(channel, answer)
+        return True
+
+
+    def billboard(self, cmd, user, channel, msg):
+        if cmd != 'billboard':
+            return False
+        self.msg(user, ', '.join([user for user in self.user_info]).encode('utf-8'))
+        return True
+
+
+    def song(self, cmd, user, channel, msg):
+        from apis.lastfm import getCurrentSong
+        if cmd != 'song':
+            return False
+        parts = msg.split()
+        print "DEBUG", msg
+        user = parts[2]
+        song = getCurrentSong(user)
+        if song:
+            self.msg(channel, '{0} is listening to {1}'.format(user, song.encode('utf-8')))
+        return True
+
+
+    def wolfram(self, user, channel, msg):
+        from apis.wolfram import wolfram
+        key = self.factory.wolfram
+        if key is None:
+            return False
+        question = ' '.join(msg.split()[1:])
+        self.logger.log('Asking wolfram for "%s"' % (question, ))
+        w = wolfram(key)
+        result = w.search(question)
+        if result:
+            answer = result.get('Value', 
+                    result.get('Result',
+                    result.get('Definition',
+                    result.get('Statement',
+                    result.get('Current result',
+                    None)))))
+            if answer:
+                self.msg(channel, answer.encode('utf-8'))
+            else:
+                count = 0
+                self.msg(channel, 'Not entirely sure, maybe this helps?:')
+                for k, v in result.items():
+                    if count < 2 and v is not None:
+                        self.msg(channel, v.encode('utf-8'))
+                    elif v is not None:
+                        self.msg(user, v.encode('utf-8'))
+                    count += 1
+        else:
+            self.msg(channel, 'I don\'t know')
+        return True
+
+
+    def unknown_command(self, cmd, user, channel, msg):
+        self.msg(channel, 'Affedersiniz.  "%s"\'den anlamadım.' % (cmd.encode('utf-8'),))
+        # self.wolfram(user, channel, msg)
+        return True
+
 
     # callbacks for events
 
@@ -209,6 +395,7 @@ class LogBot(irc.IRCClient):
         if channel == self.nickname:
             parts.insert(0, self.nickname+':')
             channel = user
+            msg = self.nickname+': '+msg
 
         #=======================================
         # MESSAGES NOT DIRECTED AT ME
@@ -220,219 +407,37 @@ class LogBot(irc.IRCClient):
                 self.nobody_en,
                 ]
         for f in indirect_functions:
-            if f(user, channel, msg):
-                return
+            try:
+                if f(user, channel, msg): return
+            except Exception as e:
+                self.logError(channel)
 
 
         #===================================
         # MESSAGES DIRECTED AT ME
         #===================================
+
         if parts[0] != self.nickname + ':':
             return
 
-        if parts[1] == 'help':
-            self.helpmsg()
-            return
-
-
-#        elif parts[1] == 'cafe':
-#            try:
-#                menu = scrapeCafe()
-#                # make the menu all nice for chat purposes
-#                for k, v in menu['stations'].items():
-#                    if v:
-#                        station = '{:.<{station_width}}'.format(k.encode('utf-8'), station_width=menu['station_max_width'] + 4)
-#                        item = '{:.>{item_width}}'.format(v['item'].encode('utf-8'), item_width=menu['item_max_width'])
-#                        self.msg(channel, '%s%s   %s' % (station, item, v['price'].encode('utf-8')))
-#            except Exception as e:
-#                self.logError(channel)
-
-
-        elif parts[1] == 'hi':
-                self.msg(channel, 'Hello, I am ' + self.nickname)
-
-        elif parts[1] == 'quote':
+        direct_functions = [
+                self.helpmsg,
+                #self.cafe,
+                self.hi,
+                self.quote,
+                self.weather,
+                #self.tell,
+                #self.movie,
+                self.reddit,
+                #self.define,
+                self.billboard,
+                self.song,
+                self.unknown_command,       # Keep this the last func
+                ]
+        for f in direct_functions:
             try:
-                randomQuote = getQuote()
-                self.msg(channel, randomQuote.encode('utf-8'))
-            except Exception, e:
-                self.logError(channel)
-                
-
-        elif parts[1] == 'weather':
-            try:
-                # get the weather and tell the channel
-                if len(parts) == 3 and  parts[2].isdigit() and len(parts[2]) == 5:
-                    weather = currentWeather('', '', parts[2])
-                elif len(parts) >= 4:
-                    state = parts.pop()
-                    city = ' '.join(parts[2:])
-                    weather = currentWeather(city, state)
-                else:
-                    weather = currentWeather()
-                w_msg = 'The weather in {0} is {1}, {2} degrees, {3}% humdity.'.format(
-                    weather['place'],
-                    weather['status'],
-                    weather['temp'],
-                    weather['humidity']
-                )
-                self.msg(channel, w_msg)
-                self.logger.log(w_msg)
-            except Exception as e:
-                self.logError(channel)
-
-
-        elif parts[1] == 'tell':
-            """Tell a user a given message when they join"""
-            try:
-                # form the message
-                target_user = parts[2]
-                tell_msg = '{0}, {1} said: {2}'.format(target_user, user, ' '.join(parts[3:]))
-                if target_user not in self.stored_messages:
-                    self.stored_messages[target_user] = []
-                self.stored_messages[target_user].append(tell_msg)
-                self.saveMessages()
-                self.msg(channel, 'I will pass that along when {0} joins'.format(target_user))
-            except Exception as e:
-                self.logError(channel)
-
-
-#        elif parts[1] == 'movie':
-#            try:
-#                config = ConfigParser.RawConfigParser()
-#                config.read('config.cfg')
-#                key = config.get('rottentomatoes', 'key')
-#                movie = ' '.join(parts[2:])
-#                movie_response = rottentomatoes(movie, key)
-#                if movie_response:
-#                    answer = 'Critics Score: {0}\nAudience Score: {1}\n{2}'.format(
-#                        movie_response['critics_score'],
-#                        movie_response['audience_score'],
-#                        movie_response['link'])
-#                    self.msg(channel, answer)
-#                else:
-#                    answer = 'I can\'t find that movie'
-#                    self.msg(channel, answer)
-#            except Exception, e:
-#                self.logError(channel)
-
-        elif parts[1] == 'reddit':
-            try:
-                subreddit = parts[2]
-                try:
-                    count = int(parts[3])
-                except IndexError:
-                    count = 1
-
-                reddit_response = getSubReddit(subreddit, count)
-                if reddit_response:
-                    answer = '{0}: {1} : {2}'.format(
-                        count,
-                        reddit_response['title'],
-                        reddit_response['url'])
-                    self.msg(channel, answer.encode('utf-8'))
-                else:
-                    answer = 'I can\'t find that on reddit'
-                    self.msg(channel, answer)
-            except Exception, e:
-                self.logError(channel)        
-
-
-        elif parts[1] == 'define':
-            try:
-                question = ' '.join(parts[2:])
-                urban_response = urbanDict(question)
-                if urban_response:
-                    answer = '{0}\nFor Example: {1}\n{2}'.format(
-                                        urban_response['definition'], 
-                                        urban_response['example'], 
-                                        urban_response['permalink']) 
-                    self.msg(channel, answer)
-                else:
-                    answer = 'I don\'t know'
-                    self.msg(channel, answer)
-            except Exception as e:
-                self.logError(channel)
-
-        elif ' '.join(parts[1:3]) == 'show users':
-            try:
-                self.msg(channel, ', '.join([user for user in self.user_info]).encode('utf-8'))
-            except Exception as e:
-                self.logError(channel)
-
-
-#        elif ' '.join(parts[1:3]) == 'update email':
-#            try:
-#                user = parts[3]
-#                if user in self.user_info:
-#                    try:
-#                        self.user_info[user]['email'] = parts[4]
-#                        self.saveUserInfo()
-#                        self.msg(channel, 'Updated email for %s' % user)
-#                    except IndexError:
-#                        self.msg(channel, 'Please supply an email')
-#                else:
-#                    self.msg(channel, "I don't know that user")
-#            except Exception as e:
-#                self.logError(channel)
-
-
-#        elif parts[1] == 'song':
-#            try:
-#                user = parts[2]
-#                song = getCurrentSong(user)
-#                if song:
-#                    self.msg(channel, '{0} is listening to {1}'.format(user, song.encode('utf-8')))
-#            except Exception as e:
-#                self.logError(channel)
-
-#        elif parts[1] in ['Will', 'will']:
-#            try:
-#                possible_ansers = [
-#                    'Yes.',
-#                    'No.',
-#                    'Probably.',
-#                    'There is a 50/50 chance.',
-#                    'Maybe. Impossible to know for sure',
-#                    'Probably not.'
-#                ]
-#                self.msg(channel, possible_ansers[randint(0, 5)].encode('utf-8'))
-#            except:
-#                self.logError(channel)
-
-
-        #==========================================================================================
-        # ---------- IF NOT ONE OF THE SPECIAL COMMANDS ABOVE ASK WOLFRAM
-        #==========================================================================================
-        else:
-            try:
-                config = ConfigParser.RawConfigParser()
-                config.read('config.cfg')
-                key = config.get('wolfram', 'key')
-                question = ' '.join(parts[1:])
-                w = wolfram(key)
-                result = w.search(question)
-                if result:
-                    answer = result.get('Value', 
-                            result.get('Result',
-                            result.get('Definition',
-                            result.get('Statement',
-                            result.get('Current result',
-                            None)))))
-                    if answer:
-                        self.msg(channel, answer.encode('utf-8'))
-                    else:
-                        count = 0
-                        self.msg(channel, 'Not entirely sure, maybe this helps?:')
-                        for k, v in result.items():
-                            if count < 2 and v is not None:
-                                self.msg(channel, v.encode('utf-8'))
-                            elif v is not None:
-                                self.msg(user, v.encode('utf-8'))
-                            count += 1
-                else:
-                    self.msg(channel, 'I don\'t know')
-
+                cmd = parts[1].decode('UTF-8', 'ignore').lower()
+                if f(cmd, user, channel, msg): return
             except Exception as e:
                 self.logError(channel)
 
@@ -474,10 +479,18 @@ class LogBotFactory(protocol.ClientFactory):
     A new protocol instance will be created each time we connect to the server.
     """
 
-    def __init__(self, conf):
-        self.channel = conf['channel']
-        self.filename = conf['logfile']
-        self.nickname = conf['nickname']
+    def __init__(self, c):
+        self.channel  = c.get('irc', 'channel')
+        self.filename = c.get('irc', 'logfile')
+        self.nickname = c.get('irc', 'nickname')
+        if c.has_section('wolfram'):
+            self.wolfram = c.get('wolfram', 'key')
+        else:
+            self.wolfram = None
+        if c.has_section('rottentomatoes'):
+            self.rottentomatoes = config.get('rottentomatoes', 'key')
+        else:
+            self.rottentomatoes = None
 
     def buildProtocol(self, addr):
         p = LogBot(self.nickname)
@@ -500,17 +513,15 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
     config = ConfigParser.RawConfigParser()
     config.read('config.cfg')
-    c = {'server': '', 'port': 0, 'channel': '', 'logfile': '', 'nickname': ''}
-    for k,v in c.items():
-        c[k] = config.get('irc', k)
-        if type(v) == type(0):
-            c[k] = int(c[k])
+
+    server = config.get('irc', 'server')
+    port   = int(config.get('irc', 'port'))
     
     # create factory protocol and application
-    f = LogBotFactory(c)
+    f = LogBotFactory(config)
 
     # connect factory to this host and port
-    reactor.connectTCP(c['server'], c['port'], f)
+    reactor.connectTCP(server, port, f)
 
     # run bot
     reactor.run()
