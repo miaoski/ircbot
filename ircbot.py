@@ -170,7 +170,7 @@ class LogBot(irc.IRCClient):
         \nquote          - 從 Reddit 隨機引用一句話\
         \nweather <城市> - 本日天氣\
         \nmoe <詞>       - 查詢萌典\
-        \nbillboard      - 排行榜\
+        \ntop10          - 排行榜\
         \nreddit <subreddit> [# of article]\
         \n或是隨便打，我會去問 Wolfram'
         self.msg(user, help_msg)
@@ -312,10 +312,12 @@ class LogBot(irc.IRCClient):
         return True
 
 
-    def billboard(self, cmd, user, channel, msg):
-        if cmd != 'billboard':
+    def top10(self, cmd, user, channel, msg):
+        from operator import itemgetter
+        if cmd != 'top10':
             return False
-        self.msg(user, '\n'.join(['%s: %d' % (k, self.user_info[k]['points']) for k in self.user_info]).encode('utf-8'))
+        tops = sorted(self.user_info.iteritems(), key=itemgetter(1), reverse = True)
+        self.msg(user, ', '.join(['%s: %d' % (v[0], v[1]['points']) for v in tops[0:10]]).encode('utf-8'))
         return True
 
 
@@ -324,7 +326,6 @@ class LogBot(irc.IRCClient):
         if cmd != 'song':
             return False
         parts = msg.split()
-        print "DEBUG", msg
         user = parts[2]
         song = getCurrentSong(user)
         if song:
@@ -428,7 +429,7 @@ class LogBot(irc.IRCClient):
                 #self.movie,
                 self.reddit,
                 #self.define,
-                self.billboard,
+                self.top10,
                 self.song,
                 self.unknown_command,       # Keep this the last func
                 ]
@@ -438,6 +439,7 @@ class LogBot(irc.IRCClient):
                 if f(cmd, user, channel, msg): return
             except Exception as e:
                 self.logError(channel)
+                return
 
 
     def userJoined(self, user, channel):
