@@ -92,7 +92,7 @@ class LogBot(irc.IRCClient):
         """ Log an error to STDOUT, the logs, and chat """
         print traceback.format_exc() 
         self.logger.log("Traceback Error:\n%s" % traceback.format_exc())
-        self.msg(channel, 'There was an Error in your request, check the logs')
+        # self.msg(channel, 'There was an Error in your request, check the logs')
 
 
     def saveUserInfo(self):
