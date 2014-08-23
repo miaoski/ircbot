@@ -1,37 +1,26 @@
-ircbot
-======
+Forked From
+===========
 
-IRC bot in Twisted
+Forked from https://github.com/sambev/ircbot, but intended to reduce its functions.
 
-See requirements.txt for library dependencies.  The easiest way to install them is with pip.  Built using python 2.7.3.
+Please use its original version if you want fancy functions.
 
-Setup instructions:
 
-1. Install dependencies with `pip install -r requirements.txt`.
-2. create a config.cfg file with keys for 'wolfram' and 'rottentomatoes' sections.*  
-3. create a files directory with messages.json and user_info.json inside of it.
-4. create a log directory for the log files.
+Installation
+============
 
-*your config file should be in the standard cfg/ini format http://en.wikipedia.org/wiki/INI_file#Example.
-
-If you don't have pip, use easy install or apt-get to get it
-
-### Ubuntu/Debian Installation:
+1. `pip install -r requirements.txt`
+2. Edit `config.cfg`
+3. Touch `files/messages.json` and `files/user_info.json`
+4. create a log directory for the log files
 
 You will probably need the libxml2-dev and libxslt-dev packages (for BeautifulSoup, used for scrapers). 
 
 `apt-get install libxml2-dev libxslt-dev`
 
-### Mac Installation:
 
-You will need Xcode with commandline tools installed and (probably?) the libxml packages mentioned above
+Usage
+=====
 
-
-### Windows Installation:
-
-If you get it running on windows and have easy to follow steps, feel free to udpate this.
-
-### Basic usage:
-`python AL.py <server> <port> <channel> <logfile>`
-
-
+1. Better use an empty channel (e.g. #test_ircbot) to get familiar with it
+2. Send `/msg AL^ help` for commands
