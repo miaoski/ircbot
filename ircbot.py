@@ -81,11 +81,9 @@ class LogBot(irc.IRCClient):
         with open(USERINFO_JSON, 'r') as f:
             try:
                 userinfo = json.loads(f.read())
-                if self.nickname not in userinfo:
-                    userinfo[self.nickname] = {'points': 0}
                 return userinfo
             except:
-                return {self.nickname: {'points': 0}}
+                return {}
 
 
     def logError(self, channel):
@@ -317,7 +315,7 @@ class LogBot(irc.IRCClient):
     def billboard(self, cmd, user, channel, msg):
         if cmd != 'billboard':
             return False
-        self.msg(user, ', '.join([user for user in self.user_info]).encode('utf-8'))
+        self.msg(user, '\n'.join(['%s: %d' % (k, self.user_info[k]['points']) for k in self.user_info]).encode('utf-8'))
         return True
 
 
