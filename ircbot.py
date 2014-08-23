@@ -178,6 +178,7 @@ class LogBot(irc.IRCClient):
             return False
         help_msg = '請使用以下指令:\
         \nquote          - 從 Reddit 隨機引用一句話\
+        \nfunslots       - 網友 x 的繽紛樂\
         \nweather <城市> - 本日天氣\
         \nmoe <詞>       - 查詢萌典\
         \ntop10          - 排行榜\
@@ -210,7 +211,7 @@ class LogBot(irc.IRCClient):
 
     def quote(self, cmd, user, channel, msg):
         from apis.reddit import getQuote
-        if cmd != 'quote':
+        if cmd != u'quote':
             return False
         randomQuote = getQuote()
         if randomQuote is not None:
@@ -222,7 +223,7 @@ class LogBot(irc.IRCClient):
 
     def weather(self, cmd, user, channel, msg):
         from apis.weatherman import currentWeather
-        if cmd != 'weather':
+        if cmd != u'weather':
             return False
         parts = msg.split()
         if len(parts) == 3 and  parts[2].isdigit() and len(parts[2]) == 5:
@@ -245,7 +246,7 @@ class LogBot(irc.IRCClient):
 
 
     def tell(self, cmd, user, channel, msg):
-        if cmd != 'tell':
+        if cmd != u'tell':
             return False
         parts = msg.split()
         target_user = parts[2]
@@ -260,7 +261,7 @@ class LogBot(irc.IRCClient):
 
     def movie(self, cmd, user, channel, msg):
         from apis.rottentomatoes import rottentomatoes
-        if cmd != 'movie':
+        if cmd != u'movie':
             return False
         key = self.factory.rottentomatoes
         if key is None:
@@ -282,7 +283,7 @@ class LogBot(irc.IRCClient):
 
     def reddit(self, cmd, user, channel, msg):
         from apis.reddit import getSubReddit
-        if cmd != 'reddit':
+        if cmd != u'reddit':
             return False
         parts = msg.split()
         subreddit = parts[2]
@@ -306,7 +307,7 @@ class LogBot(irc.IRCClient):
 
     def define(self, cmd, user, channel, msg):
         from apis.urbandic import urbanDict
-        if cmd != 'define':
+        if cmd != u'define':
             return False
         question = ' '.join(parts[2:])
         urban_response = urbanDict(question)
@@ -324,7 +325,7 @@ class LogBot(irc.IRCClient):
 
     def top10(self, cmd, user, channel, msg):
         from operator import itemgetter
-        if cmd != 'top10':
+        if cmd != u'top10':
             return False
         tops = sorted(self.user_info.iteritems(), key=itemgetter(1), reverse = True)
         self.msg(user, ', '.join(['%s: %d' % (v[0], v[1]['points']) for v in tops[0:10]]).encode('utf-8'))
@@ -333,13 +334,27 @@ class LogBot(irc.IRCClient):
 
     def song(self, cmd, user, channel, msg):
         from apis.lastfm import getCurrentSong
-        if cmd != 'song':
+        if cmd != u'song':
             return False
         parts = msg.split()
         user = parts[2]
         song = getCurrentSong(user)
         if song:
             self.msg(channel, '{0} is listening to {1}'.format(user, song.encode('utf-8')))
+        return True
+
+
+    def funslots(self, cmd, user, channel, msg):
+        from random import randint
+        if cmd != u'funslots' and cmd != u'繽紛樂':
+            return False
+        c1 = ['講個古', '表面上成局的牌', '講個秘訣']
+        c2 = ['我很有職業道德', '軌跡有高度的依賴性', '隨手打打']
+        c3 = ['多說一點，應該無妨', '打聯盟和組織戰', '我稍後會作個分析釋出']
+        def pick(xs):
+            return xs[randint(0, len(xs) - 1)]
+        fun = '，'.join([pick(c1), pick(c2), pick(c3)])
+        self.msg(channel, fun)
         return True
 
 
@@ -433,6 +448,7 @@ class LogBot(irc.IRCClient):
                 self.helpmsg,
                 #self.cafe,
                 self.hi,
+                self.funslots,
                 self.quote,
                 self.weather,
                 #self.tell,
@@ -445,7 +461,7 @@ class LogBot(irc.IRCClient):
                 ]
         for f in direct_functions:
             try:
-                cmd = parts[1].decode('UTF-8', 'ignore').lower()
+                cmd = parts[1].lower()
                 if f(cmd, user, channel, msg): return
             except Exception as e:
                 self.logError(channel)
