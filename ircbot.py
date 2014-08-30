@@ -150,6 +150,8 @@ class LogBot(irc.IRCClient):
                 user = msg.split(':')[0]
             except IndexError:
                 return True
+        elif msg.find(u'有沒有人') > -1:
+            return False
         elif msg.find(u'沒有人') == -1:
             return False
         if user == self.nickname:
